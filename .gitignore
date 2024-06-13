@@ -1,0 +1,30 @@
+# Cache objects
+packer_cache/
+
+# Crash log
+crash.log
+
+# https://www.packer.io/guides/hcl/variables
+# Exclude all .pkrvars.hcl files, which are likely to contain sensitive data, 
+# such as password, private keys, and other secrets. These should not be part of 
+# version control as they are data points which are potentially sensitive and 
+# subject to change depending on the environment.
+#
+*.pkrvars.hcl
+
+# For built boxes
+*.box
+*.vmdk
+*.ovf
+*.vmx
+*.vhd
+
+# For Secondary ISO(s)
+*.iso
+
+# Packer Log files
+*.log
+
+# This repo comes with a tool that builds a 'hashes.json' to determine when an ISO should be generated.
+# Prevent uploading this file.
+hashes.json

@@ -1,0 +1,11 @@
+{
+    "editor.formatOnSave": true,
+    "[powershell]": {
+        "debug.saveBeforeStart": "nonUntitledEditorsInActiveGroup",
+        "editor.suggest.showWords": false,
+        "editor.suggest.showFiles": false,
+        "editor.suggest.showFolders": false,
+        "editor.trimAutoWhitespace": true
+    },
+    "powershell.codeFormatting.preset": "Allman"
+}
