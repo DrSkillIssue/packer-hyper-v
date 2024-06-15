@@ -215,7 +215,7 @@ function ConvertTo-DSIIso
 
             # Retrieve all hashes from provided files.
             #Write-DSILog ("{0} - Calculating hashes from provided files." -f $MyInvocation.MyCommand.Name) -Type VRB
-            [String[]]$AllHashes = (Get-FileHash -Path $AllFiles -Algorithm "SHA256") | Sort-Object -Property Hash
+            [Object[]]$AllHashes = Get-FileHash -Path $AllFiles -Algorithm "SHA256" | Sort-Object -Property Hash
 
             # Specifies whether to skip comparing hashes between previous and current files.
             [Bool]$SkipCompareHashes = (
@@ -236,7 +236,7 @@ function ConvertTo-DSIIso
                 [String]$PreviousHashes = $Hashes -join ""
 
                 # Specifies current file hashes. Make sure they're sorted before comparison.
-                [String]$CurrentHashes = ($AllHashes.Hash | Sort-Object) -join ""
+                [String]$CurrentHashes = $AllHashes.Hash -join ""
 
                 # Skip - Hashes are the same.
                 if ($PreviousHashes -eq $CurrentHashes)
@@ -318,6 +318,10 @@ function ConvertTo-DSIIso
                 #Write-Error -Message ("{0} - Failed to create ISO file '{1}'." -f $MyInvocation.MyCommand.Name, $ISOPath) -Category InvalidOperation
                 return
             }
+
+            # Save Hashes to Hashes Path.
+            #Write-DSILog ("{0} - Saving Hashes to '{1}'." -f $MyInvocation.MyCommand.Name, $HashesPath) -Type VRB
+            ($AllHashes.Hash | ConvertTo-Json) | Out-File -FilePath $HashesPath -Force
         }
         finally
         {

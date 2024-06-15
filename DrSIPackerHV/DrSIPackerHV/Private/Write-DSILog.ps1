@@ -32,15 +32,14 @@ function Write-Log
     [CmdletBinding()]
     Param (
         [Parameter(Mandatory = $true, Position = 0)]
-        [String]$Event,
+        [String]$Message,
 
         [Parameter(Mandatory = $true, Position = 1)]
-        [ValidateSet("DBG", "VRB", "INF", "WRN", "ERR")]
+        [ValidateSet("DBG", "VERB", "INFO", "WARN", "ERR")]
         [String]$Level,
 
         [Parameter(Mandatory = $true, Position = 2)]
-        [Alias("Task")]
-        [String]$Step,
+        [String]$Task,
 
         [Parameter(Mandatory = $false)]
         [Switch]$LogOnly,
@@ -56,7 +55,15 @@ function Write-Log
     # For Example: 2024-06-08T17:19:46.123Z
     [String]$Date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
 
-    [String]$LogMessage = ("[{0}] [{1}] [{2}] - {3}" -f $Date, $Level, $Step, $Message)
+    # Specifies a hashtable to store the message event.
+    [Hashtable]$MessageEvent = @{
+        Timestamp = $Date
+        Level     = $Level
+        Task      = $Task
+        Message   = $Message
+    }
+
+    [String]$ConsoleMessage = ("[{0}] [{1}] [{2}] - {3}" -f $Date, $Level, $Step, $Message)
 
     if (-not $LogOnly)
     {
@@ -69,17 +76,17 @@ function Write-Log
                 Write-Debug -Message $LogMessage
                 break
             }
-            "VRB"
+            "VERB"
             {
                 Write-Verbose -Message $LogMessage
                 break
             }
-            "INF"
+            "INFO"
             {
                 Write-Information -MessageData $LogMessage
                 break
             }
-            "WRN"
+            "WARN"
             {
                 Write-Warning -Message $LogMessage
                 break

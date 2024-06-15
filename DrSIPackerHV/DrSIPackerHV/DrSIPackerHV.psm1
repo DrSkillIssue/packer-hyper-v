@@ -42,9 +42,9 @@ class DSIIso
     hidden [Void] _init([String]$Output)
     {
         # Apply Temporary Folder Path if one has not been set.
-        if ([String]::IsNullOrEmpty($this.TempFolderPath))
+        if ([String]::IsNullOrEmpty($this.TempDirectory))
         {
-            $this.TempFolderPath = [DSIIso]::GetTempFolder()
+            $this.TempDirectory = [DSIIso]::GetTempFolder()
         }
  
         # Return - Don't overwrite OutputDirectory if it's already set.
@@ -77,7 +77,7 @@ class DSIIso
         $this.OutputDirectory = $OutputDir
  
         # Set hashes path.
-        $this.HashesPath = Join-Path -Path $OutputDir -ChildPath "iso_content_hashes.json"
+        $this.FileHashesPath = Join-Path -Path $OutputDir -ChildPath "content_hashes.json"
     }
 
     [String] ToString()

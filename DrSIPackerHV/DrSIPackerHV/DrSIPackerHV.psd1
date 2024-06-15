@@ -20,7 +20,7 @@
     Description       = 'PowerShell module for Hyper-V Packer deployments.'
     
     # Minimum version of the PowerShell engine required by this module
-    PowerShellVersion = '5'
+    # PowerShellVersion = '5'
     
     # Modules that must be imported into the global environment prior to importing this module
     # RequiredModules = @()
