@@ -2,6 +2,9 @@ Set-StrictMode -Version Latest
 
 $PSModuleRoot = $ExecutionContext.SessionState.Module.ModuleBase
 
+#region Enums
+
+#endregion Enums
 #region Classes
 class DSIIso
 {
