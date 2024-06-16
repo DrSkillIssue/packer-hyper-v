@@ -1,9 +1,6 @@
 # Cache objects
 packer_cache/
 
-# Crash log
-crash.log
-
 # https://www.packer.io/guides/hcl/variables
 # Exclude all .pkrvars.hcl files, which are likely to contain sensitive data, 
 # such as password, private keys, and other secrets. These should not be part of 
@@ -12,20 +9,20 @@ crash.log
 #
 *.pkrvars.hcl
 
-# For built boxes
+# Exclude possible virtual machine / image files.
+*.esd
+*.wim
+*.iso
 *.box
 *.vmdk
 *.ovf
 *.vmx
 *.vhd
 *.vhdx
-
-# For Secondary ISO(s)
-*.iso
+*.vmcx
+*.vmgs
+*.VMRS
 
 # Packer Log files
 *.log
-
-# This repo comes with a tool that builds a 'hashes.json' to determine when an ISO should be generated.
-# Prevent uploading this file.
-hashes.json
+*.txt

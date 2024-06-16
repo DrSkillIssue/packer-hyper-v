@@ -1,4 +1,4 @@
-variable "hyperv_vm_name" {
+variable "hv_vm_name" {
   type        = string
   description = <<-EOT
     This is the name of the new virtual machine, without the file extension. 
@@ -7,31 +7,7 @@ variable "hyperv_vm_name" {
   EOT
 }
 
-variable "hyperv_disk_size" {
-  type        = number
-  description = "The size, in megabytes, of the hard disk to create for the VM. By default, this is 40 GB."
-  default     = 40960
-}
-
-variable "hyperv_memory" {
-  type        = number
-  description = "The amount, in megabytes, of RAM to assign to the VM. By default, this is 1 GB."
-  default     = 4096
-}
-
-variable "hyperv_enable_dynamic_memory" {
-  type        = bool
-  description = "If true enable dynamic memory for the virtual machine. This defaults to false."
-  default     = false
-}
-
-variable "hyperv_cpus" {
-  type        = number
-  description = "The number of CPUs the virtual machine should use. If this isn't specified, the default is 1 CPU."
-  default     = 1
-}
-
-variable "hyperv_switch_name" {
+variable "hv_switch_name" {
   type        = string
   description = <<-EOT
     The name of the switch to connect the virtual machine to. 
@@ -40,97 +16,13 @@ variable "hyperv_switch_name" {
   EOT
 }
 
-variable "hyperv_switch_vlan_id" {
-  type        = string
-  description = <<-EOT
-    This is the VLAN of the virtual switch's network card. 
-    
-    By default none is set. 
-    
-    If none is set then a VLAN is not set on the switch's network card. 
-    
-    If this value is set it should match the VLAN specified in by vlan_id.
-  EOT
-}
-
-variable "hyperv_vlan_id" {
-  type        = string
-  description = <<-EOT
-    This is the VLAN of the virtual machine's network card for the new virtual machine. 
-    
-    By default none is set. 
-    
-    If none is set then VLANs are not set on the virtual machine's network card.
-  EOT
-}
-
-variable "hyperv_generation" {
-  type        = number
-  description = <<-EOT
-    The Hyper-V generation for the virtual machine. By default, this is 1. Generation 2 Hyper-V virtual machines do not support floppy drives. 
-    
-    In this scenario use secondary_iso_images instead. Hard drives and DVD drives will also be SCSI and not IDE.
-  EOT
-
-  default = 1
-}
-
-variable "hyperv_enable_secure_boot" {
-  type        = bool
-  description = "If true enable secure boot for the virtual machine. This defaults to false. See secure_boot_template below for additional settings."
-  default     = false
-}
-
-variable "hyperv_secure_boot_template" {
-  type        = string
-  description = <<-EOT
-    The secure boot template to be configured. 
-    
-    Valid values are:
-      - "MicrosoftWindows" (Windows) 
-      - "MicrosoftUEFICertificateAuthority" (Linux). 
-      
-    This only takes effect if enable_secure_boot is set to "true". 
-    
-    This defaults to "MicrosoftWindows".
-  EOT
-
-  default = "MicrosoftWindows"
-}
-
-variable "hyperv_enable_virtualization_extensions" {
-  type        = bool
-  description = <<-EOT
-     If true enable virtualization extensions for the virtual machine. 
-     
-     This defaults to false. 
-     
-     For nested virtualization you need to enable MAC spoofing, disable dynamic memory and have at least 4GB of RAM assigned to the virtual machine.
-
-  EOT
-
-  default = false
-}
-
-variable "hyperv_enable_mac_spoofing" {
-  type        = bool
-  description = "If true enable MAC address spoofing for the virtual machine. This defaults to false."
-  default     = false
-}
-
-variable "hyperv_enable_tpm" {
-  type        = bool
-  description = "If true enable a virtual TPM for the virtual machine. This defaults to false."
-  default     = false
-}
-
-variable "hyperv_iso_url" {
+variable "hv_iso_url" {
   type        = string
   description = "A URL to the ISO containing the installation image or virtual hard drive (VHD or VHDX) file to clone."
   # default = "https://software-download.microsoft.com/download/sg/20348.169.210806-2348.fe_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso"
 }
 
-variable "hyperv_iso_checksum" {
+variable "hv_iso_checksum" {
   type        = string
   description = <<-EOT
     "The checksum for the ISO file or virtual hard drive file.
@@ -160,7 +52,118 @@ variable "hyperv_iso_checksum" {
   # default = "sha256:4f1457c4fe14ce48c9b2324924f33ca4f0470475e6da851b39ccbf98f44e7852"
 }
 
-variable "hyperv_iso_urls" {
+variable "hv_disk_size" {
+  type        = number
+  description = "The size, in megabytes, of the hard disk to create for the VM. By default, this is 40 GB."
+  default     = 51200
+}
+
+variable "hv_memory" {
+  type        = number
+  description = "The amount, in megabytes, of RAM to assign to the VM. By default, this is 1 GB."
+  default     = 4096
+}
+
+variable "hv_enable_dynamic_memory" {
+  type        = bool
+  description = "If true enable dynamic memory for the virtual machine. This defaults to false."
+  default     = false
+}
+
+variable "hv_cpus" {
+  type        = number
+  description = "The number of CPUs the virtual machine should use. If this isn't specified, the default is 1 CPU."
+  default     = 1
+}
+
+variable "hv_switch_vlan_id" {
+  type        = string
+  description = <<-EOT
+    This is the VLAN of the virtual switch's network card. 
+    
+    By default none is set. 
+    
+    If none is set then a VLAN is not set on the switch's network card. 
+    
+    If this value is set it should match the VLAN specified in by vlan_id.
+  EOT
+
+  default = null
+}
+
+variable "hv_vlan_id" {
+  type        = string
+  description = <<-EOT
+    This is the VLAN of the virtual machine's network card for the new virtual machine. 
+    
+    By default none is set. 
+    
+    If none is set then VLANs are not set on the virtual machine's network card.
+  EOT
+
+  default = null
+}
+
+variable "hv_generation" {
+  type        = number
+  description = <<-EOT
+    The Hyper-V generation for the virtual machine. By default, this is 1. Generation 2 Hyper-V virtual machines do not support floppy drives. 
+    
+    In this scenario use secondary_iso_images instead. Hard drives and DVD drives will also be SCSI and not IDE.
+  EOT
+
+  default = 2
+}
+
+variable "hv_enable_secure_boot" {
+  type        = bool
+  description = "If true enable secure boot for the virtual machine. This defaults to false. See secure_boot_template below for additional settings."
+  default     = false
+}
+
+variable "hv_secure_boot_template" {
+  type        = string
+  description = <<-EOT
+    The secure boot template to be configured. 
+    
+    Valid values are:
+      - "MicrosoftWindows" (Windows) 
+      - "MicrosoftUEFICertificateAuthority" (Linux). 
+      
+    This only takes effect if enable_secure_boot is set to "true". 
+    
+    This defaults to "MicrosoftWindows".
+  EOT
+
+  default = "MicrosoftWindows"
+}
+
+variable "hv_enable_virtualization_extensions" {
+  type        = bool
+  description = <<-EOT
+     If true enable virtualization extensions for the virtual machine. 
+     
+     This defaults to false. 
+     
+     For nested virtualization you need to enable MAC spoofing, disable dynamic memory and have at least 4GB of RAM assigned to the virtual machine.
+  EOT
+
+  default = false
+}
+
+variable "hv_enable_mac_spoofing" {
+  type        = bool
+  description = "If true enable MAC address spoofing for the virtual machine. This defaults to false."
+  default     = false
+}
+
+variable "hv_enable_tpm" {
+  type        = bool
+  description = "If true enable a virtual TPM for the virtual machine. This defaults to false."
+  default     = false
+}
+
+variable "hv_iso_urls" {
   type        = list(string)
   description = <<-EOT
     Multiple URLs for the ISO to download. Packer will try these in order. 
@@ -171,9 +174,11 @@ variable "hyperv_iso_urls" {
     
     Only one of iso_url or iso_urls can be specified.
   EOT
+
+  default = null
 }
 
-variable "hyperv_secondary_iso_images" {
+variable "hv_secondary_iso_images" {
   type        = list(string)
   description = <<-EOT
     A list of ISO paths to attach to a VM when it is booted. 
@@ -182,22 +187,27 @@ variable "hyperv_secondary_iso_images" {
 
     By default, no secondary ISO will be attached.
   EOT
+
+  default = null
 }
 
-variable "hyperv_iso_target_path" {
+variable "hv_iso_target_path" {
   type        = string
   description = <<-EOT
     The path where the iso should be saved after download. 
     By default will go in the packer cache, with a hash of the original filename and checksum as its name.
   EOT
+
+  default = null
 }
 
-variable "hyperv_iso_target_extension" {
+variable "hv_iso_target_extension" {
   type        = string
   description = "The extension of the iso file after download. This defaults to iso."
+  default     = "iso"
 }
 
-variable "hyperv_output_directory" {
+variable "hv_output_directory" {
   type        = string
   description = <<-EOT
     This setting specifies the directory that artifacts from the build, such as the virtual machine files and disks, will be output to. 
@@ -208,9 +218,11 @@ variable "hyperv_output_directory" {
      
      By default this is "output-BUILDNAME" where "BUILDNAME" is the name of the build.
   EOT
+
+  default = null
 }
 
-variable "hyperv_disable_shutdown" {
+variable "hv_disable_shutdown" {
   type        = bool
   description = <<-EOT
     Packer normally halts the virtual machine after all provisioners have run when no shutdown_command is defined. 
@@ -224,7 +236,7 @@ variable "hyperv_disable_shutdown" {
   default = false
 }
 
-variable "hyperv_use_legacy_network_adapter" {
+variable "hv_use_legacy_network_adapter" {
   type        = bool
   description = <<-EOT
     If true use a legacy network adapter as the NIC. 
@@ -238,7 +250,7 @@ variable "hyperv_use_legacy_network_adapter" {
   default = false
 }
 
-variable "hyperv_differencing_disk" {
+variable "hv_differencing_disk" {
   type        = bool
   description = <<-EOT
      If true enables differencing disks. 
@@ -253,7 +265,7 @@ variable "hyperv_differencing_disk" {
   default = false
 }
 
-variable "hyperv_use_fixed_vhd_format" {
+variable "hv_use_fixed_vhd_format" {
   type        = bool
   description = <<-EOT
      If true, creates the boot disk on the virtual machine as a fixed VHD format disk. 
@@ -270,7 +282,7 @@ variable "hyperv_use_fixed_vhd_format" {
   default = false
 }
 
-variable "hyperv_disk_block_size" {
+variable "hv_disk_block_size" {
   type        = number
   description = <<-EOT
      The block size of the VHD to be created. 
@@ -283,7 +295,7 @@ variable "hyperv_disk_block_size" {
   default = 32
 }
 
-variable "hyperv_disk_additional_size" {
+variable "hv_disk_additional_size" {
   type        = list(number)
   description = <<-EOT
     The size or sizes of any additional hard disks for the VM in megabytes. 
@@ -294,9 +306,11 @@ variable "hyperv_disk_additional_size" {
     
     The builder uses expandable rather than fixed-size virtual hard disks, so the actual file representing the disk will not use the full size unless it is full.
   EOT
+
+  default = null
 }
 
-variable "hyperv_guest_additions_mode" {
+variable "hv_guest_additions_mode" {
   type        = string
   description = <<-EOT
     If set to attach then attach and mount the ISO image specified in guest_additions_path. 
@@ -305,23 +319,28 @@ variable "hyperv_guest_additions_mode" {
     
     This is the default.
   EOT
+
+  default = "disable"
 }
 
-variable "hyperv_guest_additions_path" {
+variable "hv_guest_additions_path" {
   type        = string
   description = "The path to the ISO image for guest additions."
+  default     = null
 }
 
-variable "hyperv_mac_address" {
+variable "hv_mac_address" {
   type        = string
   description = <<-EOT
     This allows a specific MAC address to be used on the default virtual network card. 
     
     The MAC address must be a string with no delimiters, for example "0000deadbeef".
   EOT
+
+  default = null
 }
 
-variable "hyperv_keep_registered" {
+variable "hv_keep_registered" {
   type        = bool
   description = <<-EOT
     If "true", Packer will not delete the VM from The Hyper-V manager. 
@@ -334,7 +353,7 @@ variable "hyperv_keep_registered" {
   default = false
 }
 
-variable "hyperv_temp_path" {
+variable "hv_temp_path" {
   type        = string
   description = <<-EOT
     The location under which Packer will create a directory to house all the VM files and folders during the build. 
@@ -345,20 +364,23 @@ variable "hyperv_temp_path" {
     
     The seven digit number at the end of the name is automatically generated by Packer to ensure the directory name is unique.
   EOT
+
+  default = null
 }
 
-variable "hyperv_configuration_version" {
+variable "hv_configuration_version" {
   type        = string
   description = "This allows you to set the vm version when calling New-VM to generate the vm."
+  default     = null
 }
 
-variable "hyperv_skip_compaction" {
+variable "hv_skip_compaction" {
   type        = bool
   description = "If true skip compacting the hard disk for the virtual machine when exporting. This defaults to false."
   default     = false
 }
 
-variable "hyperv_skip_export" {
+variable "hv_skip_export" {
   type        = bool
   description = <<-EOT
     If true Packer will skip the export of the VM. 
@@ -373,7 +395,7 @@ variable "hyperv_skip_export" {
   default = false
 }
 
-variable "hyperv_headless" {
+variable "hv_headless" {
   type        = bool
   description = <<-EOT
     Packer defaults to building Hyper-V virtual machines by launching a GUI that shows the console of the machine being built. 
@@ -384,7 +406,7 @@ variable "hyperv_headless" {
   default = false
 }
 
-variable "hyperv_first_boot_device" {
+variable "hv_first_boot_device" {
   type        = string
   description = <<-EOT
     When configured, determines the device or device type that is given preferential treatment when choosing a boot device.
@@ -401,9 +423,11 @@ variable "hyperv_first_boot_device" {
       - CD or DVD
       - NET
   EOT
+
+  default = null
 }
 
-variable "hyperv_boot_order" {
+variable "hv_boot_order" {
   type        = string
   description = <<-EOT
     When configured, the boot order determines the order of the devices from which to boot.
@@ -417,10 +441,12 @@ variable "hyperv_boot_order" {
 
     NB This only works for Generation 2 machines.
   EOT
+
+  default = null
 }
 
 # SHUTDOWN CONFIGURATION REFERENCE
-variable "hyperv_shutdown_command" {
+variable "hv_shutdown_command" {
   type        = string
   description = <<-EOT
     The command to use to gracefully shut down the machine once all provisioning is complete. 
@@ -433,9 +459,11 @@ variable "hyperv_shutdown_command" {
       and instead specify the final shutdown command in your last script.
 
   EOT
+
+  default = null
 }
 
-variable "hyperv_shutdown_timeout" {
+variable "hv_shutdown_timeout" {
   type        = string
   description = <<-EOT
     The amount of time to wait after executing the shutdown_command for the virtual machine to actually shut down. 
@@ -450,7 +478,7 @@ variable "hyperv_shutdown_timeout" {
 
 
 # CD CONFIGURATION REFERENCE
-variable "hyperv_cd_files" {
+variable "hv_cd_files" {
   type        = list(string)
   description = <<-EOT
     A list of files to place onto a CD that is attached when the VM is booted. 
@@ -490,9 +518,11 @@ variable "hyperv_cd_files" {
       - hdiutil (macOS)
       - oscdimg (Windows)
   EOT
+
+  default = null
 }
 
-variable "hyperv_cd_content" {
+variable "hv_cd_content" {
   type        = map(string)
   description = <<-EOT
     Key/Values to add to the CD. The keys represent the paths, and the values contents. 
@@ -509,16 +539,19 @@ variable "hyperv_cd_content" {
       }
       cd_label = "cidata"
   EOT
+
+  default = null
 }
 
-variable "hyperv_cd_label" {
+variable "hv_cd_label" {
   type        = string
   description = "CD Label"
+  default     = null
 }
 
 
 # COMMUNICATOR CONFIGURATION REFERENCE
-variable "hyperv_communicator" {
+variable "hv_communicator" {
   type        = string
   description = <<-EOT
     The communicator to use to communicate with the VM. 
@@ -538,7 +571,7 @@ variable "hyperv_communicator" {
   default = "winrm"
 }
 
-variable "hyperv_pause_before_connecting" {
+variable "hv_pause_before_connecting" {
   type        = string
   description = <<-EOT
     We recommend that you enable SSH or WinRM as the very last step in your guest's bootstrap script, 
@@ -552,20 +585,25 @@ variable "hyperv_pause_before_connecting" {
     
     But once a connection attempt is successful, it will disconnect and then wait 10 minutes before connecting to the guest and beginning provisioning.
   EOT
+
+  default = null
 }
 
 # OPTIONAL WINRM FIELDS
-variable "hyperv_winrm_username" {
+variable "hv_winrm_username" {
   type        = string
   description = "The username to use to connect to WinRM."
+  default     = "Administrator"
 }
 
-variable "hyperv_winrm_password" {
+variable "hv_winrm_password" {
   type        = string
+  sensitive   = true
   description = "The password to use to connect to WinRM."
+  default     = "SecretThingToChange!123"
 }
 
-variable "hyperv_winrm_host" {
+variable "hv_winrm_host" {
   type        = string
   description = <<-EOT
     The address for WinRM to connect to.
@@ -574,9 +612,11 @@ variable "hyperv_winrm_host" {
 
     ssh_interface documentation: https://developer.hashicorp.com/packer/integrations/hashicorp/amazon/latest/components/builder/ebs#ssh_interface
   EOT
+
+  default = null
 }
 
-variable "hyperv_winrm_no_proxy" {
+variable "hv_winrm_no_proxy" {
   type        = bool
   description = <<-EOT
     Setting this to true adds the remote host:port to the NO_PROXY environment variable. 
@@ -585,18 +625,22 @@ variable "hyperv_winrm_no_proxy" {
     
     Default to false.
   EOT
+
+  default = false
 }
 
-variable "hyperv_winrm_port" {
+variable "hv_winrm_port" {
   type        = number
   description = <<-EOT
     The WinRM port to connect to. 
     
     This defaults to 5985 for plain unencrypted connection and 5986 for SSL when winrm_use_ssl is set to true.
   EOT
+
+  default = 5986
 }
 
-variable "hyperv_winrm_timeout" {
+variable "hv_winrm_timeout" {
   type        = string
   description = <<-EOT
     The time to wait for WinRM to become available. 
@@ -607,17 +651,19 @@ variable "hyperv_winrm_timeout" {
   default = "30m"
 }
 
-variable "hyperv_winrm_use_ssl" {
+variable "hv_winrm_use_ssl" {
   type        = bool
   description = "If true, use HTTPS for WinRM."
+  default     = true
 }
 
-variable "hyperv_winrm_insecure" {
+variable "hv_winrm_insecure" {
   type        = bool
   description = "If true, do not check server certificate chain and host name."
+  default     = true
 }
 
-variable "hyperv_winrm_use_ntlm" {
+variable "hv_winrm_use_ntlm" {
   type        = bool
   description = <<-EOT
     If true, NTLMv2 authentication (with session security) will be used for WinRM, rather than default (basic authentication), 
@@ -626,31 +672,37 @@ variable "hyperv_winrm_use_ntlm" {
     Further reading for remote connection authentication can be found:
       https://learn.microsoft.com/en-us/windows/win32/winrm/authentication-for-remote-connections?redirectedfrom=MSDN
   EOT
+
+  default = false
 }
 
 # OPTIONAL SSH FIELDS
-variable "hyperv_ssh_host" {
+variable "hv_ssh_host" {
   type        = string
   description = "The address to SSH to. This usually is automatically configured by the builder."
+  default     = null
 }
 
-variable "hyperv_ssh_port" {
+variable "hv_ssh_port" {
   type        = number
   description = "The port to connect to SSH. This defaults to 22."
   default     = 22
 }
 
-variable "hyperv_ssh_username" {
+variable "hv_ssh_username" {
   type        = string
   description = "The username to connect to SSH with. Required if using SSH."
+  default     = "packer"
 }
 
-variable "hyperv_ssh_password" {
+variable "hv_ssh_password" {
   type        = string
+  sensitive   = true
   description = "A plaintext password to use to authenticate with SSH."
+  default     = "SecretThingToChange!123"
 }
 
-variable "hyperv_ssh_ciphers" {
+variable "hv_ssh_ciphers" {
   type        = list(string)
   description = <<-EOT
     This overrides the value of ciphers supported by default by Golang. 
@@ -668,11 +720,12 @@ variable "hyperv_ssh_ciphers" {
       - "arcfour"
       - "aes128-cbc"
       - "3des-cbc"
-
   EOT
+
+  default = null
 }
 
-variable "hyperv_ssh_clear_authorized_keys" {
+variable "hv_ssh_clear_authorized_keys" {
   type        = bool
   description = <<-EOT
     If true, Packer will attempt to remove its temporary key from ~/.ssh/authorized_keys and /root/.ssh/authorized_keys. 
@@ -686,7 +739,7 @@ variable "hyperv_ssh_clear_authorized_keys" {
   default = false
 }
 
-variable "hyperv_ssh_key_exchange_algorithms" {
+variable "hv_ssh_key_exchange_algorithms" {
   type        = list(string)
   description = <<-EOT
     If set, Packer will override the value of key exchange (kex) algorithms supported by default by Golang. 
@@ -699,24 +752,28 @@ variable "hyperv_ssh_key_exchange_algorithms" {
       - "diffie-hellman-group14-sha1"
       - "diffie-hellman-group1-sha1".
   EOT
+
+  default = null
 }
 
-variable "hyperv_ssh_certificate_file" {
+variable "hv_ssh_certificate_file" {
   type        = string
   description = <<-EOT
     Path to user certificate used to authenticate with SSH. 
     
     The ~ can be used in path and will be expanded to the home directory of current user.
   EOT
+
+  default = null
 }
 
-variable "hyperv_ssh_pty" {
+variable "hv_ssh_pty" {
   type        = bool
   description = "If true, a PTY will be requested for the SSH connection. This defaults to false."
   default     = false
 }
 
-variable "hyperv_ssh_timeout" {
+variable "hv_ssh_timeout" {
   type        = string
   description = <<-EOT
     The time to wait for SSH to become available. 
@@ -729,75 +786,78 @@ variable "hyperv_ssh_timeout" {
   default = "5m"
 }
 
-variable "hyperv_ssh_disable_agent_forwarding" {
+variable "hv_ssh_disable_agent_forwarding" {
   type        = bool
   description = "If true, SSH agent forwarding will be disabled. Defaults to false."
   default     = false
 }
 
-variable "hyperv_ssh_handshake_attempts" {
+variable "hv_ssh_handshake_attempts" {
   type        = number
   description = "The number of handshakes to attempt with SSH once it can connect. This defaults to 10, unless a ssh_timeout is set."
   default     = 10
 }
 
-variable "hyperv_ssh_bastion_host" {
+variable "hv_ssh_bastion_host" {
   type        = string
   description = "A bastion host to use for the actual SSH connection."
+  default     = null
 }
 
-variable "hyperv_ssh_bastion_port" {
+variable "hv_ssh_bastion_port" {
   type        = number
   description = "The port of the bastion host. Defaults to 22."
   default     = 22
 }
 
-variable "iso_checksum" {
-  type        = string
-  description = "The checksum for the ISO specified in `iso_url`"
-}
-
-variable "hyperv_ssh_bastion_agent_auth" {
+variable "hv_ssh_bastion_agent_auth" {
   type        = bool
   description = "If true, the local SSH agent will be used to authenticate with the bastion host. Defaults to false."
   default     = false
 }
 
-variable "hyperv_ssh_bastion_username" {
+variable "hv_ssh_bastion_username" {
   type        = string
   description = "The username to connect to the bastion host."
+  default     = "packer"
 }
 
-variable "hyperv_ssh_bastion_password" {
+variable "hv_ssh_bastion_password" {
   type        = string
+  sensitive   = true
   description = "The password to use to authenticate with the bastion host."
+  default     = "SecretThingToChange!123"
 }
 
-variable "hyperv_ssh_bastion_interactive" {
+variable "hv_ssh_bastion_interactive" {
   type        = bool
   description = "If true, the keyboard-interactive used to authenticate with bastion host."
   default     = false
 }
 
-variable "hyperv_ssh_bastion_private_key_file" {
+variable "hv_ssh_bastion_private_key_file" {
   type        = string
   description = <<-EOT
     Path to a PEM encoded private key file to use to authenticate with the bastion host. 
     
     The ~ can be used in path and will be expanded to the home directory of current user.
   EOT
+
+  default = null
 }
 
-variable "hyperv_ssh_bastion_certificate_file" {
+variable "hv_ssh_bastion_certificate_file" {
   type        = string
   description = <<-EOT
     Path to user certificate used to authenticate with bastion host. 
     
     The ~ can be used in path and will be expanded to the home directory of current user.
   EOT
+
+  default = null
 }
 
-variable "hyperv_ssh_file_transfer_method" {
+variable "hv_ssh_file_transfer_method" {
   type        = string
   description = <<-EOT
     scp or sftp - How to transfer files, Secure copy (default) or SSH File Transfer Protocol.
@@ -807,30 +867,36 @@ variable "hyperv_ssh_file_transfer_method" {
       
     As a workaround you can override the transfer protocol with SFTP instead ssh_file_transfer_protocol = "sftp".
   EOT
+
+  default = "scp"
 }
 
-variable "hyperv_ssh_proxy_host" {
+variable "hv_ssh_proxy_host" {
   type        = string
   description = "A SOCKS proxy host to use for SSH connections."
+  default     = null
 }
 
-variable "hyperv_ssh_proxy_port" {
+variable "hv_ssh_proxy_port" {
   type        = number
   description = "A port of the SOCKS proxy. Defaults to 1080."
   default     = 1080
 }
 
-variable "hyperv_ssh_proxy_username" {
+variable "hv_ssh_proxy_username" {
   type        = string
   description = "The optional username to authenticate with the proxy server."
+  default     = "packer"
 }
 
-variable "hyperv_ssh_proxy_password" {
+variable "hv_ssh_proxy_password" {
   type        = string
+  sensitive   = true
   description = "The optional password to use to authenticate with the proxy server."
+  default     = "SecretThingToChange!123"
 }
 
-variable "hyperv_ssh_keep_alive_interval" {
+variable "hv_ssh_keep_alive_interval" {
   type        = string
   description = <<-EOT
      How often to send "keep alive" messages to the server. 
@@ -841,36 +907,42 @@ variable "hyperv_ssh_keep_alive_interval" {
   default = "5s"
 }
 
-variable "hyperv_ssh_read_write_timeout" {
+variable "hv_ssh_read_write_timeout" {
   type        = string
   description = <<-EOT
     The amount of time to wait for a remote command to end. 
     
     This might be useful if, for example, packer hangs on a connection after a reboot. Example: 5m. Disabled by default.
   EOT
+
+  default = null
 }
 
-variable "hyperv_ssh_remote_tunnels" {
+variable "hv_ssh_remote_tunnels" {
   type        = list(string)
   description = "Packer currently doesn't have this doucmented: https://github.com/hashicorp/packer-plugin-sdk/blob/main/communicator/config.go"
+  default     = null
 }
 
-variable "hyperv_ssh_local_tunnels" {
+variable "hv_ssh_local_tunnels" {
   type        = list(string)
   description = "Packer currently doesn't have this doucmented: https://github.com/hashicorp/packer-plugin-sdk/blob/main/communicator/config.go"
+  default     = null
 }
 
-variable "hyperv_ssh_private_key_file" {
+variable "hv_ssh_private_key_file" {
   type        = string
   description = <<-EOT
     Path to a PEM encoded private key file to use to authenticate with SSH. 
     
     The ~ can be used in path and will be expanded to the home directory of current user.
   EOT
+
+  default = null
 }
 
 # BOOT CONFIGURATION REFERENCE
-variable "hyperv_boot_command" {
+variable "hv_boot_command" {
   type        = list(string)
   description = <<-EOT
     The boot configuration is very important: boot_command specifies the keys to type when the virtual machine 
@@ -919,9 +991,11 @@ variable "hyperv_boot_command" {
 
       If this is not specified, it is assumed the installer will start itself.
   EOT
+
+  default = null
 }
 
-variable "hyperv_boot_keygroup_interval" {
+variable "hv_boot_keygroup_interval" {
   type        = string
   description = <<-EOT
      Time to wait after sending a group of key pressses. 
@@ -932,9 +1006,11 @@ variable "hyperv_boot_keygroup_interval" {
      
      If this isn't specified, a sensible default value is picked depending on the builder type.
   EOT
+
+  default = null
 }
 
-variable "hyperv_boot_wait" {
+variable "hv_boot_wait" {
   type        = string
   description = <<-EOT
     The time to wait after booting the initial virtual machine before typing the boot_command. 
@@ -946,5 +1022,5 @@ variable "hyperv_boot_wait" {
     If this isn't specified, the default is 10s or 10 seconds. To set boot_wait to 0s, use a negative number, such as "-1s"
   EOT
 
-  default = "10s"
+  default = "1s"
 }

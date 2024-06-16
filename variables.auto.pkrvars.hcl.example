@@ -1,0 +1,40 @@
+# The following variables are required:
+# - hv_vm_name
+# - hv_iso_url
+# - hv_iso_checksum
+# - hv_switch_name
+# - hv_secondary_iso_images
+hv_vm_name = "win2022"
+
+# You can point this to a local ISO file or an ISO.
+# For Example: 
+# hv_iso_url = "C:/Users/USER_NAME_HERE/Downloads/SERVER_EVAL_x64FRE_en-us.iso"
+# hv_iso_checksum = "none"
+
+# Or an ISO URL
+# For Example:
+# hv_iso_url = https://software-static.download.prss.microsoft.com/sg/download/888969d5-f34g-4e03-ac9d-1f9786c66749/SERVER_EVAL_x64FRE_en-us.iso
+# hv_iso_checksum = "sha256:HASH_HERE"
+
+# To enable Virtualization, use the following:
+# hv_enable_dynamic_memory            = false
+# hv_enable_mac_spoofing              = true
+# hv_enable_virtualization_extensions = true
+
+hv_secondary_iso_images = [
+  "./data/win_2022/secondary.iso"
+]
+
+# What switch to use for the VM.
+# Preferably, one with an Internet connection if you choose to perform updates.
+hv_switch_name = "External"
+
+# Uncomment to set the current path as the temp path.
+# hv_temp_path = "."
+
+# If testing, uncomment hv_keep_registered and hv_skip_export to delete the VM after testing.
+# hv_keep_registered = false
+# hv_skip_export     = true
+
+# To have HyperV run in the background, uncomment hv_headless
+# hv_headless        = true
