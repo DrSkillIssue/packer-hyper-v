@@ -293,7 +293,7 @@ Function Enable-WinRM
 
                 $Message = [System.Text.StringBuilder]::new()
                 [Void] $Message.Append("WinRM service failed to restart. ")
-                [Void] $Message.Append("Error: {0}" -f $WinRMError[0].Exception.Message)
+                [Void] $Message.Append("Error: {0}" -f $WinRMError[0].ToString())
 
                 Write-Log -Message $Message.ToString() -Level ERR -Step "Enable-WinRM"
                 return

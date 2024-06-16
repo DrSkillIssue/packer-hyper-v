@@ -18,6 +18,7 @@ crash.log
 *.ovf
 *.vmx
 *.vhd
+*.vhdx
 
 # For Secondary ISO(s)
 *.iso
