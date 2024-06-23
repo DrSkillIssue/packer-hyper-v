@@ -2,7 +2,7 @@ using namespace System
 using namespace System.Collections.Generic
 using namespace System.Text
 
-enum DSIWinUpdateSearchStatus : Int32
+enum DSIWinUpdateSearchStatus
 {
     NotStarted = 0
     InProgress = 1
@@ -15,12 +15,12 @@ enum DSIWinUpdateSearchStatus : Int32
 class DSISkipWindowsUpdate
 {
     # Specifies the Update to be skipped.
-    [System.__ComObject]$Update
+    [MarshalByRefObject]$Update
 
     # Specifies the reason for skipping the update.
     [String]$Reason
 
-    DSISkipWindowsUpdate([System.__ComObject]$Update, [String]$Reason)
+    DSISkipWindowsUpdate([MarshalByRefObject]$Update, [String]$Reason)
     {
         $this.Update = $Update
         $this.Reason = $Reason
@@ -43,11 +43,32 @@ class DSISearchWindowsUpdate
     # Specifies the current Search Status.
     [DSIWinUpdateSearchStatus]$SearchStatus
 
+    # Specifies the current Download Status.
+    [PSObject]$DownloadStatus
+
+    # Specifies the current Install Status.
+    [PSObject]$InstallStatus
+
+    # Specifies whether a reboot is required.
+    [Bool]$RebootRequired = $false
+
     # Updates that are found will be placed in this collection.
-    [List[__ComObject]]$Updates = [List[__ComObject]]::new()
+    [List[MarshalByRefObject]]$Updates = [List[MarshalByRefObject]]::new()
 
     # Updates to be skipped will be placed in this collection.
-    [List[DSISkipWindowsUpdate]]$SkippedUpdates = [List[DSISkipWindowsUpdate]]::new()
+    [List[DSISkipWindowsUpdate]]$UpdatesToSkip = [List[DSISkipWindowsUpdate]]::new()
+
+    # Updates to be downloaded will be placed in this object.
+    # This represents object 'Microsoft.Update.UpdateColl' which is a collection.
+    [MarshalByRefObject]$UpdatesToDownload
+
+    # Updates to be installed will be placed in this object.
+    # This represents object 'Microsoft.Update.UpdateColl' which is a collection.
+    [MarshalByRefObject]$UpdatesToInstall
+
+    # Initialize an Update Session.
+    # This will be used to search, download, and install updates.
+    [MarshalByRefObject]$UpdateSession
 
     # Specifies the category of updates to search for.
     [String[]]$Categories
@@ -75,35 +96,51 @@ class DSISearchWindowsUpdate
     # Criteria: "AutoSelectOnWebSites=0 AND BrowseOnly=1"
     [Bool]$IsOptional = $false
 
+    # Specifies the Client Application ID.
+    hidden [String]$_ClientApplicationID = "packer-windows-update"
+
     # Specifies the current OS Version.
     hidden [Version]$OS = [Environment]::OSVersion.Version
-     
-    # Initialize an Update Session.
-    # This will be used to search for updates.
-    hidden [__ComObject]$_UpdateSession
-
-    hidden [String]$_ClientApplicationID = "packer-windows-update"
 
     DSIWindowsUpdate()
     {
         $this.SearchStatus = [DSIWinUpdateSearchStatus]::NotStarted
-        $this._Init()
     }
 
     hidden [Void] _Init()
     {
-        $this._UpdateSession = (New-Object -ComObject "Microsoft.Update.Session")
-        $this._UpdateSession.ClientApplicationID = $this._ClientApplicationID
+        # Initialize the Update Session.
+        $this.UpdateSession = (New-Object -ComObject "Microsoft.Update.Session")
+        $this.UpdateSession.ClientApplicationID = $this._ClientApplicationID
+
+        # Initialize an Update Collections to store updates to be downloaded.
+        $this.UpdatesToDownload = (New-Object -ComObject "Microsoft.Update.UpdateColl")
+        $this.UpdatesToInstall = (New-Object -ComObject "Microsoft.Update.UpdateColl")
     }
 
-    [__ComObject] GetUpdateSession()
+    [MarshalByRefObject] GetUpdateSession()
     {
-        return $this._UpdateSession
+        return $this.UpdateSession
     }
 
-    [List[__ComObject]] GetUpdates()
+    [List[MarshalByRefObject]] GetUpdates()
     {   
         return $this.Updates
+    }
+
+    [List[DSISkipWindowsUpdate]] GetUpdatesToSkip()
+    {
+        return $this.UpdatesToSkip
+    }
+
+    [MarshalByRefObject] GetUpdatesToDownload()
+    {
+        return $this.UpdatesToDownload
+    }
+
+    [MarshalByRefObject] GetUpdatesToInstall()
+    {
+        return $this.UpdatesToInstall
     }
 
     [String[]] GetCategories()
@@ -251,6 +288,44 @@ class DSISearchWindowsUpdate
         return $Criteria.ToString()
     }
 
+    [Void] DownloadUpdates() 
+    {
+        # Retrieve Updates to Download
+        $UToDownload = $this.UpdatesToDownload
+
+        # Skip - No updates found.
+        if ($UToDownload.Count -le 0)
+        {
+            return
+        }
+
+        # Start the download process.
+        # First - Create an UpdateDownloader object.
+        $Downloader = $this.UpdateSession.CreateUpdateDownloader()
+
+        # Second - Add updates to download.
+        # NOTE: You must cast to [MarshalByRefObject] to avoid 'Unable to cast COM object' exceptions.
+        $Downloader.Updates = [MarshalByRefObject]$UToDownload
+
+        # Third - Start downloading updates.
+        # Write-Verbose -Message ("{0} - Downloading updates." -f $MyInvocation.MyCommand.Name)
+        $DownloadResults = $Downloader.Download()
+
+        # Record the status of the download process.
+        $this.DownloadStatus = $DownloadResults.ResultCode
+
+        # Finally - Add downloaded updates to the 'UpdatesToInstall' collection.
+        $this.UpdatesToDownload | ForEach-Object {
+
+            $CurrentUpdate = $_
+
+            if ($CurrentUpdate.IsDownloaded)
+            {
+                [Void] $this.UpdatesToInstall.Add($CurrentUpdate)
+            }
+        }
+    }
+    
     [Void] SearchUpdates()
     {
         $Criteria = $this.GetSearchCriteria()
@@ -259,7 +334,7 @@ class DSISearchWindowsUpdate
         $this._Init()
 
         # Generate an UpdateSearcher and search for updates.
-        $UpdateSearcher = $this._UpdateSession.CreateUpdateSearcher()
+        $UpdateSearcher = $this.UpdateSession.CreateUpdateSearcher()
         $SearchResults = $UpdateSearcher.Search($Criteria)
 
         # Update the Search Status.
@@ -275,7 +350,9 @@ class DSISearchWindowsUpdate
         if ($this.Updates.Count -gt 0)
         {
             $this.Updates.Clear()
-            $this.SkippedUpdates.Clear()
+            $this.UpdatesToSkip.Clear()
+            $this.UpdatesToDownload.Clear()
+            $this.UpdatesToInstall.Clear()
         }
 
         # If Categories were not provided, add all updates.
@@ -288,7 +365,7 @@ class DSISearchWindowsUpdate
                 <# Skip - Update requires user input.
                 if ($CurrentUpdate.InstallationBehavior.CanRequestUserInput)
                 {
-                    $SkippedUpdates.Add($CurrentUpdate)
+                    $UpdatesToSkip.Add($CurrentUpdate)
                     return
                 }#>
 
@@ -297,9 +374,22 @@ class DSISearchWindowsUpdate
                 {
                     $CurrentUpdate.AcceptEula()
                 }
+
+                # Add 'UpdatesToDownload' if not already downloaded.
+                if (-not $CurrentUpdate.IsDownloaded)
+                {
+                    $this.UpdatesToDownload.Add($CurrentUpdate)
+                }
+                else
+                {
+                    # Update is already downloaded, add to 'UpdatesToInstall'.
+                    $this.UpdatesToInstall.Add($CurrentUpdate)
+                }
                 
                 $this.Updates.Add($CurrentUpdate)
             }
+
+            # No categories were provided, we can exit.
             return
         }
 
@@ -334,13 +424,13 @@ class DSISearchWindowsUpdate
             # Skip - Update does not match provided Categories.
             if (-not $MatchingCategories)
             {
-                $SkippedUpdates.Add([DSISkipWindowsUpdate]::new($CurrentUpdate, "Update does not match provided Categories."))
+                $UpdatesToSkip.Add([DSISkipWindowsUpdate]::new($CurrentUpdate, "Update does not match provided Categories."))
                 return
             }
             <# Skip - Update requires user input.
             elseif ($CurrentUpdate.InstallationBehavior.CanRequestUserInput)
             {
-                $SkippedUpdates.Add($CurrentUpdate)
+                $UpdatesToSkip.Add($CurrentUpdate)
                 return
             }#>
 
@@ -349,13 +439,56 @@ class DSISearchWindowsUpdate
             {
                 $CurrentUpdate.AcceptEula()
             }
+
+            # Add 'UpdatesToDownload' if not already downloaded.
+            if (-not $CurrentUpdate.IsDownloaded)
+            {
+                $this.UpdatesToDownload.Add($CurrentUpdate)
+            }
+            else
+            {
+                # Update is already downloaded, add to 'UpdatesToInstall'.
+                $this.UpdatesToInstall.Add($CurrentUpdate)
+            }
                  
             $this.Updates.Add($CurrentUpdate)
         }
     }
+
+    [Void] InstallUpdates()
+    {
+
+        # Retrieve Updates to Install
+        $UToInstall = $this.UpdatesToInstall
+
+        # Skip - No updates found.
+        if ($UToInstall.Count -le 0)
+        {
+            return
+        }
+
+        # Start the installation process.
+        # First - Create an UpdateInstaller object.
+        $Installer = $this.UpdateSession.CreateUpdateInstaller()
+
+        # Second - Add updates to install.
+        # NOTE: You must cast to [MarshalByRefObject] to avoid 'Unable to cast COM object' exceptions.
+        $Installer.Updates = [MarshalByRefObject]$UToInstall
+
+        # Third - Start installing updates.
+        # Write-Verbose -Message ("{0} - Installing updates." -f $MyInvocation.MyCommand.Name)
+        # https://learn.microsoft.com/en-us/windows/win32/api/wuapi/nf-wuapi-iupdateinstaller-install
+        $InstallResults = $Installer.Install()
+
+        # Record the status of the install process.
+        $this.InstallStatus = $InstallResults.ResultCode
+
+        # Record the reboot required status.
+        $this.RebootRequired = $InstallResults.RebootRequired
+    }
 }
 
-enum DSIWindowsUpdateStatus : Int32
+enum DSIWindowsUpdateStatus
 {
     # Specifies the default status code. This is used when the script has not started.
     Not_Started = -1
@@ -627,34 +760,19 @@ function Invoke-DSIWindowsUpdateDownload
     )
     Process
     {
-        Write-Verbose ("{0} - Starting download process." -f $MyInvocation.MyCommand.Name)
-
-        # Retrieve Updates from $Search.
-        $Updates = $Search.GetUpdates()
-
-        # Skip - No updates found.
-        if ($Updates.Count -le 0)
+        try
         {
-            Write-Verbose -Message ("{0} - No updates found. Skipping download process." -f $MyInvocation.MyCommand.Name)
-            return
+            Write-Verbose ("{0} - Starting download process." -f $MyInvocation.MyCommand.Name)
+
+            
         }
-
-        # Specifies a list of updates to be downloaded.
-        [List[__ComObject]]$UpdatesToDownload = $Updates.Where({ -not $_.IsDownloaded })
-
-        # Skip - No updates to download.
-        if ($UpdatesToDownload.Count -le 0)
+        finally
         {
-            Write-Verbose -Message ("{0} - All updates have already been downloaded." -f $MyInvocation.MyCommand.Name)
-            return
+            [PSCustomObject]@{
+                Search     = $Search
+                Downloader = $Downloader
+            }
         }
-
-        # Start the download process.
-        Write-Verbose -Message ("{0} - Must download {1} updates." -f $MyInvocation.MyCommand.Name, $UpdatesToDownload.Count)
-        $Downloader = $Search.GetUpdateSession().CreateUpdateDownloader()
-
-        # Add updates to download.
-        $Downloader.Updates = $UpdatesToDownload
     }
 }
 
@@ -670,3 +788,7 @@ function Install-DSIWindowsUpdate
     $UpdatePath = $UpdatePath.ToString()
 
 }
+
+$Search = Search-DSIWindowsUpdate
+$Search.DownloadUpdates()
+$Search
