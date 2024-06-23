@@ -17,7 +17,10 @@ source "hyperv-iso" "win2022" {
   memory                           = var.hv_memory
   output_directory                 = var.hv_output_directory
   secondary_iso_images             = var.hv_secondary_iso_images
+  secure_boot_template             = var.hv_secure_boot_template
   shutdown_command                 = "shutdown /s /f /t 0"
+  skip_compaction                  = var.hv_skip_compaction
+  skip_export                      = var.hv_skip_export
   switch_name                      = var.hv_switch_name
   temp_path                        = var.hv_temp_path
   vlan_id                          = var.hv_vlan_id
@@ -29,7 +32,6 @@ source "hyperv-iso" "win2022" {
   winrm_insecure                   = var.hv_winrm_insecure
 
   keep_registered = var.hv_keep_registered
-  skip_export     = var.hv_skip_export
   headless        = var.hv_headless
 }
 

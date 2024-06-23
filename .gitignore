@@ -26,3 +26,9 @@ packer_cache/
 # Packer Log files
 *.log
 *.txt
+
+# Output directory
+output*
+
+# Hyperv directory
+hyperv*
