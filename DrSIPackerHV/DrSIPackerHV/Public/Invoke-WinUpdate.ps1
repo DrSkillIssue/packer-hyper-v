@@ -2,7 +2,67 @@ using namespace System
 using namespace System.Collections.Generic
 using namespace System.Text
 
-enum DSIWinUpdateSearchStatus
+enum LogLevel
+{
+    DBG = 1
+    VERB = 2
+    INFO = 3
+    WARN = 4
+    ERR = 5
+    CRIT = 6
+}
+
+<#
+.SYNOPSIS
+    Writes a message to a log file.
+.DESCRIPTION
+    Writes a message to a log file.
+
+    A log file will be placed at the following location:
+        "{0}\Temp\packer_win_update.log" -f $Env:SystemRoot
+.PARAMETER Message
+    The message to write.
+.PARAMETER Level
+    The level of the message.
+
+    Valid values are DBG, VRB, INF, WRN, or ERR.
+.PARAMETER Step
+    The step the message is associated with.
+.EXAMPLE
+    Write-Log -Message "This is a message." -Level INF -Step "Example"
+
+    The above example writes an informational message to a log file.
+.INPUTS
+    None
+.OUTPUTS
+    None
+#>
+function Write-Log
+{
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory = $true, Position = 0)]
+        [String]$Message,
+
+        [Parameter(Mandatory = $true, Position = 1)]
+        [LogLevel]$Level,
+
+        [Parameter(Mandatory = $true, Position = 2)]
+        [String]$Step
+    )
+
+    [String]$LogDirectory = Join-Path -Path $Env:SystemRoot -ChildPath "Temp"
+    [String]$LogPath = Join-Path -Path $LogDirectory -ChildPath "packer_win_update.log"
+
+    # Example: 06/27/2024 07:29:34
+    [String]$Date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+
+    [String]$LogMessage = ("[{0}] [{1}] - {3}" -f $Date, $Level, $Step, $Message)
+
+    $LogMessage | Out-File -FilePath $LogPath -Append -ErrorAction SilentlyContinue
+}
+
+enum DSIWUSearchStatus
 {
     NotStarted = 0
     InProgress = 1
@@ -10,6 +70,29 @@ enum DSIWinUpdateSearchStatus
     SucceededWithErrors = 3
     Failed = 4
     Aborted = 5
+    UnknownStatus = 101
+}
+
+enum DSIWUDownloadStatus
+{
+    NotStarted = 0
+    InProgress = 1
+    Succeeded = 2
+    SucceededWithErrors = 3
+    Failed = 4
+    Aborted = 5
+    UnknownStatus = 101
+}
+
+enum DSIWUInstallStatus
+{
+    NotStarted = 0
+    InProgress = 1
+    Succeeded = 2
+    SucceededWithErrors = 3
+    Failed = 4
+    Aborted = 5
+    UnknownStatus = 101
 }
 
 class DSISkipWindowsUpdate
@@ -38,16 +121,17 @@ class DSISkipWindowsUpdate
     }
 }
 
-class DSISearchWindowsUpdate
+class DSIWindowsUpdateHandler
 {
     # Specifies the current Search Status.
-    [DSIWinUpdateSearchStatus]$SearchStatus
+    # This state is set after running InvokeSearchUpdates().
+    [DSIWUSearchStatus]$SearchStatus
 
     # Specifies the current Download Status.
-    [PSObject]$DownloadStatus
+    [DSIWUDownloadStatus]$DownloadStatus
 
     # Specifies the current Install Status.
-    [PSObject]$InstallStatus
+    [DSIWUInstallStatus]$InstallStatus
 
     # Specifies whether a reboot is required.
     [Bool]$RebootRequired = $false
@@ -56,45 +140,45 @@ class DSISearchWindowsUpdate
     [List[MarshalByRefObject]]$Updates = [List[MarshalByRefObject]]::new()
 
     # Updates to be skipped will be placed in this collection.
-    [List[DSISkipWindowsUpdate]]$UpdatesToSkip = [List[DSISkipWindowsUpdate]]::new()
+    hidden [List[DSISkipWindowsUpdate]]$UpdatesToSkip = [List[DSISkipWindowsUpdate]]::new()
 
     # Updates to be downloaded will be placed in this object.
     # This represents object 'Microsoft.Update.UpdateColl' which is a collection.
-    [MarshalByRefObject]$UpdatesToDownload
+    hidden [MarshalByRefObject]$UpdatesToDownload
 
     # Updates to be installed will be placed in this object.
     # This represents object 'Microsoft.Update.UpdateColl' which is a collection.
-    [MarshalByRefObject]$UpdatesToInstall
+    hidden [MarshalByRefObject]$UpdatesToInstall
 
     # Initialize an Update Session.
     # This will be used to search, download, and install updates.
-    [MarshalByRefObject]$UpdateSession
+    hidden [MarshalByRefObject]$UpdateSession
 
     # Specifies the category of updates to search for.
-    [String[]]$Categories
+    hidden [String[]]$Categories
 
     # Flag to determine whether to search for ALL updates.
     # Criteria: "IsInstalled=$($this.IsInstalled)"
-    [Bool]$AllUpdates = $true
+    hidden [Bool]$AllUpdates = $true
 
     # Flag to determine to search for updates that are hidden.
-    [Bool]$IsHidden = $false
+    hidden [Bool]$IsHidden = $false
 
     # Flag to determine to search for updates that are installed.
     # To search for updates that are NOT installed. Leave this as 'False'.
-    [Bool]$IsInstalled = $false
+    hidden [Bool]$IsInstalled = $false
 
     # Flag to determine whether to search for recommended updates.
     # Criteria: "BrowseOnly=0"
-    [Bool]$IsRecommended = $false
+    hidden [Bool]$IsRecommended = $false
 
     # Flag to determine whether to search for important updates.
     # Criteria: "AutoSelectOnWebSites=1"
-    [Bool]$IsImportant = $false
+    hidden [Bool]$IsImportant = $false
 
     # Flag to determine whether to search for optional updates.
     # Criteria: "AutoSelectOnWebSites=0 AND BrowseOnly=1"
-    [Bool]$IsOptional = $false
+    hidden [Bool]$IsOptional = $false
 
     # Specifies the Client Application ID.
     hidden [String]$_ClientApplicationID = "packer-windows-update"
@@ -102,9 +186,11 @@ class DSISearchWindowsUpdate
     # Specifies the current OS Version.
     hidden [Version]$OS = [Environment]::OSVersion.Version
 
-    DSIWindowsUpdate()
+    DSIWindowsUpdateHandler()
     {
-        $this.SearchStatus = [DSIWinUpdateSearchStatus]::NotStarted
+        $this.SearchStatus = [DSIWUSearchStatus]::NotStarted
+        $this.DownloadStatus = [DSIWUDownloadStatus]::NotStarted
+        $this.InstallStatus = [DSIWUInstallStatus]::NotStarted
     }
 
     hidden [Void] _Init()
@@ -288,7 +374,7 @@ class DSISearchWindowsUpdate
         return $Criteria.ToString()
     }
 
-    [Void] DownloadUpdates() 
+    [Void] InvokeDownloadUpdates() 
     {
         # Retrieve Updates to Download
         $UToDownload = $this.UpdatesToDownload
@@ -296,6 +382,7 @@ class DSISearchWindowsUpdate
         # Skip - No updates found.
         if ($UToDownload.Count -le 0)
         {
+            Write-Log -Message "No updates marked as 'To Download' found." -Level 2 -Step "InvokeDownloadUpdates"
             return
         }
 
@@ -311,8 +398,17 @@ class DSISearchWindowsUpdate
         # Write-Verbose -Message ("{0} - Downloading updates." -f $MyInvocation.MyCommand.Name)
         $DownloadResults = $Downloader.Download()
 
-        # Record the status of the download process.
-        $this.DownloadStatus = $DownloadResults.ResultCode
+        Write-Log -Message ("Download Results: {0}" -f $DownloadResults.ResultCode) -Level 2 -Step "InvokeDownloadUpdates"
+
+        # Record the status of the install process.
+        if ([DSIWUDownloadStatus].GetEnumName($DownloadResults.ResultCode))
+        {
+            $this.InstallStatus = $DownloadResults.ResultCode
+        }
+        else
+        {
+            $this.InstallStatus = [DSIWUDownloadStatus]::UnknownStatus
+        }
 
         # Finally - Add downloaded updates to the 'UpdatesToInstall' collection.
         $this.UpdatesToDownload | ForEach-Object {
@@ -321,34 +417,58 @@ class DSISearchWindowsUpdate
 
             if ($CurrentUpdate.IsDownloaded)
             {
+                Write-Log -Message ("To be installed: {0}." -f $CurrentUpdate.Title) -Level 1 -Step "InvokeDownloadUpdates"
                 [Void] $this.UpdatesToInstall.Add($CurrentUpdate)
+            }
+            else
+            {
+                Write-Log -Message ("Skipping Update as it's not downloaded: {0}." -f $CurrentUpdate.Title) -Level 1 -Step "InvokeDownloadUpdates"
             }
         }
     }
     
-    [Void] SearchUpdates()
+    [Void] InvokeSearchUpdates()
     {
+        Write-Log -Message "Retrieve Search Criteria" -Level 1 -Step "InvokeSearchUpdates"
+        
+        # Retrieve Search Criteria
         $Criteria = $this.GetSearchCriteria()
 
+        Write-Log -Message ("Search Criteria: {0}" -f $Criteria) -Level 1 -Step "InvokeSearchUpdates"
+
         # Reset the Update Session before searching for updates.
+        Write-Log -Message "Resetting Update Session." -Level 1 -Step "InvokeSearchUpdates"
         $this._Init()
 
         # Generate an UpdateSearcher and search for updates.
+        Write-Log -Message "Searching for updates." -Level 2 -Step "InvokeSearchUpdates"
         $UpdateSearcher = $this.UpdateSession.CreateUpdateSearcher()
         $SearchResults = $UpdateSearcher.Search($Criteria)
 
-        # Update the Search Status.
-        $this.SearchStatus = $SearchResults.ResultCode
+        # Record the Search Status.
+        Write-Log -Message ("Search Results: {0}" -f $SearchResults.ResultCode) -Level 2 -Step "InvokeSearchUpdates"
+        if ([DSIWUSearchStatus].GetEnumName($SearchResults.ResultCode))
+        {
+            $this.SearchStatus = $SearchResults.ResultCode
+        }
+        else
+        {
+            $this.SearchStatus = [DSIWUSearchStatus]::UnknownStatus
+        }
 
         # Return - No updates found.
         if ($SearchResults.Updates.Count -le 0)
         {
+            Write-Log -Message "No updates found." -Level 1 -Step "InvokeSearchUpdates"
             return
         }
+
+        Write-Log -Message ("{0} updates found." -f $SearchResults.Updates.Count) -Level 1 -Step "InvokeSearchUpdates"
 
         # Clear the collection before adding new updates.
         if ($this.Updates.Count -gt 0)
         {
+            Write-Log -Message "Previous updates found. Clearing existing updates." -Level 1 -Step "InvokeSearchUpdates"
             $this.Updates.Clear()
             $this.UpdatesToSkip.Clear()
             $this.UpdatesToDownload.Clear()
@@ -358,6 +478,8 @@ class DSISearchWindowsUpdate
         # If Categories were not provided, add all updates.
         if ($this.Categories.Count -le 0)
         {
+            Write-Log -Message "No categories provided. Adding all updates." -Level 1 -Step "InvokeSearchUpdates"
+
             $SearchResults.Updates | ForEach-Object {
 
                 $CurrentUpdate = $_
@@ -372,17 +494,21 @@ class DSISearchWindowsUpdate
                 # Accept EULA if required.
                 if (-not $CurrentUpdate.EulaAccepted)
                 {
+                    Write-Log -Message ("Accepting EULA for: {0}." -f $CurrentUpdate.Title) -Level 1 -Step "InvokeSearchUpdates"
                     $CurrentUpdate.AcceptEula()
                 }
 
                 # Add 'UpdatesToDownload' if not already downloaded.
                 if (-not $CurrentUpdate.IsDownloaded)
                 {
+                    # Update is not downloaded, add to 'UpdatesToDownload'.
+                    Write-Log -Message ("To be downloaded: {0}." -f $CurrentUpdate.Title) -Level 1 -Step "InvokeSearchUpdates"
                     $this.UpdatesToDownload.Add($CurrentUpdate)
                 }
                 else
                 {
                     # Update is already downloaded, add to 'UpdatesToInstall'.
+                    Write-Log -Message ("To be installed: {0}." -f $CurrentUpdate.Title) -Level 1 -Step "InvokeSearchUpdates"
                     $this.UpdatesToInstall.Add($CurrentUpdate)
                 }
                 
@@ -392,6 +518,8 @@ class DSISearchWindowsUpdate
             # No categories were provided, we can exit.
             return
         }
+
+        Write-Log -Message "Categories provided. Filtering updates based on categories." -Level 2 -Step "InvokeSearchUpdates"
 
         # Build a hashset of categories to search for.
         # This will be used to filter updates based on categories.
@@ -424,6 +552,7 @@ class DSISearchWindowsUpdate
             # Skip - Update does not match provided Categories.
             if (-not $MatchingCategories)
             {
+                Write-Log -Message ("Skipping Update as it does not match provided Categories: {0}." -f $CurrentUpdate.Title) -Level 1 -Step "InvokeSearchUpdates"
                 $UpdatesToSkip.Add([DSISkipWindowsUpdate]::new($CurrentUpdate, "Update does not match provided Categories."))
                 return
             }
@@ -437,17 +566,21 @@ class DSISearchWindowsUpdate
             # Accept EULA if required.
             if (-not $CurrentUpdate.EulaAccepted)
             {
+                Write-Log -Message ("Accepting EULA for: {0}." -f $CurrentUpdate.Title) -Level 1 -Step "InvokeSearchUpdates"
                 $CurrentUpdate.AcceptEula()
             }
 
             # Add 'UpdatesToDownload' if not already downloaded.
             if (-not $CurrentUpdate.IsDownloaded)
             {
+                # Update is not downloaded, add to 'UpdatesToDownload'.
+                Write-Log -Message ("To be downloaded: {0}." -f $CurrentUpdate.Title) -Level 1 -Step "InvokeSearchUpdates"
                 $this.UpdatesToDownload.Add($CurrentUpdate)
             }
             else
             {
                 # Update is already downloaded, add to 'UpdatesToInstall'.
+                Write-Log -Message ("To be installed: {0}." -f $CurrentUpdate.Title) -Level 1 -Step "InvokeSearchUpdates"
                 $this.UpdatesToInstall.Add($CurrentUpdate)
             }
                  
@@ -455,9 +588,8 @@ class DSISearchWindowsUpdate
         }
     }
 
-    [Void] InstallUpdates()
+    [Void] InvokeInstallUpdates()
     {
-
         # Retrieve Updates to Install
         $UToInstall = $this.UpdatesToInstall
 
@@ -481,7 +613,14 @@ class DSISearchWindowsUpdate
         $InstallResults = $Installer.Install()
 
         # Record the status of the install process.
-        $this.InstallStatus = $InstallResults.ResultCode
+        if ([DSIWUInstallStatus].GetEnumName($InstallResults.ResultCode))
+        {
+            $this.InstallStatus = $InstallResults.ResultCode
+        }
+        else
+        {
+            $this.InstallStatus = [DSIWUInstallStatus]::UnknownStatus
+        }
 
         # Record the reboot required status.
         $this.RebootRequired = $InstallResults.RebootRequired
@@ -524,16 +663,10 @@ enum DSIWindowsUpdateStatus
     Search_In_Progress = 81
 }
 
-class DSIWindowsUpdateResults : DSISearchWindowsUpdate
+class DSIWindowsUpdate : DSIWindowsUpdateHandler
 {
     # Specifies the name of the target machine.
     [String]$ComputerName = $env:COMPUTERNAME
-
-    # Specifies the list of updates that were installed (if any).
-    [String[]]$Installed = @()
-
-    # Specifies a list of updates that failed to install (if any).
-    [String[]]$Failed = @()
 
     # Specifies the current status of Windows Update.
     [DSIWindowsUpdateStatus]$Status
@@ -541,15 +674,21 @@ class DSIWindowsUpdateResults : DSISearchWindowsUpdate
     # Specifies the current status message of Windows Update.
     [String]$LastMessage
 
-    DSIWindowsUpdateResults() : base()
+    DSIWindowsUpdate() : base()
     {
         $this.Status = [DSIWindowsUpdateStatus]::Not_Started
         $this.LastMessage = "Windows Update has not started."
     }
 
-    [Void] SetStatus([DSIWindowsUpdateStatus]$StatusCode)
+    [Void] SearchUpdates()
     {
-        $this.Status = $StatusCode
+        $this.Status = [DSIWindowsUpdateStatus]::Search_In_Progress
+        $this.InvokeSearchUpdates()
+    }
+
+    [Void] SetStatus([DSIWindowsUpdateStatus]$CurrentStatus)
+    {
+        $this.Status = $CurrentStatus
     }
 
     [Int64] GetStatus()
@@ -652,13 +791,139 @@ class DSIWindowsUpdateResults : DSISearchWindowsUpdate
 .INPUTS
     None
 .OUTPUTS
-    DSISearchWindowsUpdate
-    Upon successful completion, this function will return a DSISearchWindowsUpdate object.
+    DSIWindowsUpdate
+    Upon successful completion, this function will return a DSIWindowsUpdate object.
 #>
 function Search-DSIWindowsUpdate
 {
     [CmdletBinding()]
-    [OutputType([DSISearchWindowsUpdate])]
+    [OutputType([DSIWindowsUpdate])]
+    Param (
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [DSIWindowsUpdate]$WindowsUpdate,
+
+        [Parameter(Mandatory = $false)]
+        [AllowEmptyCollection()]
+        [AllowNull()]
+        [String[]]$Categories,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [Switch]$IsHidden,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [Switch]$IsRecommended,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [Switch]$IsImportant,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [Switch]$IsOptional,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [Switch]$IsInstalled
+    )
+
+    try
+    {
+        # Set Categories if provided.
+        if ($Categories.Count -gt 0)
+        {
+            $WindowsUpdate.SetCategories($Categories)
+        }
+
+        # Set IsHidden flag if provided.
+        if ($IsHidden)
+        {
+            $WindowsUpdate.SetIsHidden($true)
+        }
+
+        # Set IsInstalled flag if provided.
+        if ($IsInstalled)
+        {
+            $WindowsUpdate.SetIsInstalled($true)
+        }
+
+        # Set IsRecommended flag if provided.
+        if ($IsRecommended)
+        {
+            $WindowsUpdate.SetIsRecommended($true)
+        }
+
+        # Set IsImportant flag if provided.
+        if ($IsImportant)
+        {
+            $WindowsUpdate.SetIsImportant($true)
+        }
+
+        # Set IsOptional flag if provided.
+        if ($IsOptional)
+        {
+            $WindowsUpdate.SetIsOptional($true)
+        }
+
+        # Search for updates.
+        $WindowsUpdate.SearchUpdates()
+    }
+    finally
+    {
+        $WindowsUpdate
+    }
+}
+
+<#
+.SYNOPSIS
+    Starts the download process for the provided Windows Updates.
+.DESCRIPTION
+    Starts the download process for the provided Windows Updates. Each update has flag 'IsDownloaded' to
+        determine whether an update has been downloaded.
+
+    This function will query 'DSIWindowsUpdate' object for updates that were found during the search process with
+        the specified flag marked as 'False'.
+
+    If an update has already been downloaded, it will be skipped.
+.PARAMETER Search
+    Specifies the DSIWindowsUpdate object that contains the updates to download.
+
+    You can use the 'Search-DSIWindowsUpdate' function to create a new search object.
+.EXAMPLE
+    $Search = Search-DSIWindowsUpdate
+    $Search | Invoke-DSIWindowsUpdateDownload
+
+    This example will start the download process for the updates found during the search process.
+#>
+function Invoke-DSIWindowsUpdateDownload
+{
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
+        [DSIWindowsUpdate]$Search
+    )
+    Process
+    {
+        try
+        {
+            Write-Verbose ("{0} - Starting download process." -f $MyInvocation.MyCommand.Name)
+
+            
+        }
+        finally
+        {
+            [PSCustomObject]@{
+                Search     = $Search
+                Downloader = $Downloader
+            }
+        }
+    }
+}
+
+function Invoke-DSIWindowsUpdate
+{
+    [CmdletBinding()]
     Param (
         [Parameter(Mandatory = $false)]
         [AllowEmptyCollection()]
@@ -682,113 +947,33 @@ function Search-DSIWindowsUpdate
 
     try
     {
-        # Initialize a new Search Windows Update object.
-        $Search = [DSISearchWindowsUpdate]::new()
+        # Initialize a new DSIWindowsUpdateResults object.
+        $WindowsUpdate = [DSIWindowsUpdate]::new()
 
-        # Set Categories if provided.
-        if ($Categories.Count -gt 0)
-        {
-            $Search.SetCategories($Categories)
+        # Specifies Parameter Splat for Search-DSIWindowsUpdate.
+        [Hashtable]$SearchUpdateParams = @{
+            WindowsUpdate = $WindowsUpdate
+            Categories    = $Categories
+            IsHidden      = $IsHidden
+            IsRecommended = $IsRecommended
+            IsImportant   = $IsImportant
+            IsOptional    = $IsOptional
+            IsInstalled   = $IsInstalled
         }
 
-        # Set IsHidden flag if provided.
-        if ($IsHidden)
-        {
-            $Search.SetIsHidden($true)
-        }
+        Write-Debug ("{0} - Searching for Windows Updates." -f $MyInvocation.MyCommand.Name)
+        $WindowsUpdate = Search-DSIWindowsUpdate @SearchUpdateParams
 
-        # Set IsInstalled flag if provided.
-        if ($IsInstalled)
-        {
-            $Search.SetIsInstalled($true)
-        }
-
-        # Set IsRecommended flag if provided.
-        if ($IsRecommended)
-        {
-            $Search.SetIsRecommended($true)
-        }
-
-        # Set IsImportant flag if provided.
-        if ($IsImportant)
-        {
-            $Search.SetIsImportant($true)
-        }
-
-        # Set IsOptional flag if provided.
-        if ($IsOptional)
-        {
-            $Search.SetIsOptional($true)
-        }
-
-        # Search for updates.
-        $Search.SearchUpdates()
+        # TODO: Update Status based on Search Results.
+    }
+    catch
+    {
+        $_
     }
     finally
     {
-        $Search
+        $WindowsUpdate
     }
 }
 
-<#
-.SYNOPSIS
-    Starts the download process for the provided Windows Updates.
-.DESCRIPTION
-    Starts the download process for the provided Windows Updates. Each update has flag 'IsDownloaded' to
-        determine whether an update has been downloaded.
-
-    This function will query 'DSISearchWindowsUpdate' object for updates that were found during the search process with
-        the specified flag marked as 'False'.
-
-    If an update has already been downloaded, it will be skipped.
-.PARAMETER Search
-    Specifies the DSISearchWindowsUpdate object that contains the updates to download.
-
-    You can use the 'Search-DSIWindowsUpdate' function to create a new search object.
-.EXAMPLE
-    $Search = Search-DSIWindowsUpdate
-    $Search | Invoke-DSIWindowsUpdateDownload
-
-    This example will start the download process for the updates found during the search process.
-#>
-function Invoke-DSIWindowsUpdateDownload
-{
-    [CmdletBinding()]
-    Param (
-        [Parameter(Mandatory = $true, ValueFromPipeline = $true)]
-        [DSISearchWindowsUpdate]$Search
-    )
-    Process
-    {
-        try
-        {
-            Write-Verbose ("{0} - Starting download process." -f $MyInvocation.MyCommand.Name)
-
-            
-        }
-        finally
-        {
-            [PSCustomObject]@{
-                Search     = $Search
-                Downloader = $Downloader
-            }
-        }
-    }
-}
-
-function Install-DSIWindowsUpdate
-{
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$UpdatePath
-    )
-
-    $UpdatePath = Resolve-Path $UpdatePath
-    $UpdatePath = $UpdatePath.ToString()
-
-}
-
-$Search = Search-DSIWindowsUpdate
-$Search.DownloadUpdates()
-$Search
+$Updates = Invoke-DSIWindowsUpdate
